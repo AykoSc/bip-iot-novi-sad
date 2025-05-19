@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "author": "Combined Games BIPBox with MPU6050",
+  "author": "Reaction Game",
   "editor": "wokwi",
   "parts": [
     {
@@ -13,7 +13,7 @@
     {
       "type": "wokwi-lcd1602",
       "id": "lcd1",
-      "top": -150,
+      "top": -120,
       "left": -10,
       "attrs": {
         "pins": "i2c",
@@ -21,31 +21,22 @@
       }
     },
     {
-      "type": "wokwi-mpu6050",
-      "id": "mpu6050",
-      "top": -150,
-      "left": 180,
-      "attrs": {
-        "i2cAddress": "0x68"
-      }
-    },
-    {
-      "type": "wokwi-potentiometer",
-      "id": "pot1",
-      "top": 120,
-      "left": 150,
+      "type": "wokwi-buzzer",
+      "id": "buzzer1",
+      "top": 100,
+      "left": 100,
       "attrs": {}
     },
     {
       "type": "wokwi-pushbutton",
       "id": "key1",
-      "top": 120,
+      "top": 100,
       "left": -50
     },
     {
       "type": "wokwi-resistor",
       "id": "r_key1",
-      "top": 90,
+      "top": 70,
       "left": -50,
       "attrs": {
         "value": "10000"
@@ -90,45 +81,15 @@
       []
     ],
     [
-      "mpu6050:GND",
-      "esp:GND.2",
-      "black",
+      "buzzer1:1",
+      "esp:33",
+      "orange",
       []
     ],
     [
-      "mpu6050:VCC",
-      "esp:3V3",
-      "red",
-      []
-    ],
-    [
-      "mpu6050:SDA",
-      "esp:21",
-      "blue",
-      []
-    ],
-    [
-      "mpu6050:SCL",
-      "esp:22",
-      "purple",
-      []
-    ],
-    [
-      "pot1:GND",
+      "buzzer1:2",
       "esp:GND.1",
       "black",
-      []
-    ],
-    [
-      "pot1:SIG",
-      "esp:35",
-      "green",
-      []
-    ],
-    [
-      "pot1:VCC",
-      "esp:3V3",
-      "red",
       []
     ],
     [

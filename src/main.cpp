@@ -1,129 +1,192 @@
+// LCD I2C 16x2
+// LiquidCrystal_I2C Library
 #include <Arduino.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
 
-// --- Pin Definitions ---
-#define KEY1_PIN 39
-#define POTENTIOMETER_PIN 35
+LiquidCrystal_I2C lcd(0x27, 16, 2); // set the LCD address to 0x3F or 0x27 for a 16 chars and 2 line display
 
-// --- Component Objects ---
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-Adafruit_MPU6050 mpu;
+// BIPBox pin assignments
+#define KEY1 39
+#define KEY2 36
+#define PIR 23
+#define DHT 19
+#define PHOTORESISTOR 34
+#define POTENTIOMETER 35
+#define LED1 16
+#define LED2 17
+#define LED3 18
+#define BUZZER 33
+#define SERVO 32
 
-// --- Variables ---
-int potValue = 0;
-bool buttonPressed = false;
-bool lastButtonState = false;
-
-sensors_event_t accelEvent, gyroEvent, tempEvent; // MPU6050 provides temperature too
-
-unsigned long lastMpuReadTime = 0;
-const unsigned long mpuReadInterval = 500;
-
-// --- Helper function to print to LCD ---
-void printLcdLine(int row, String text)
+enum gameState
 {
-    lcd.setCursor(0, row);
-    lcd.print("                "); // Clear line
-    lcd.setCursor(0, row);
-    lcd.print(text);
-}
+  st_idle,
+  st_waiting,
+  st_starting,
+  st_reaction,
+  st_score
+};
+
+enum gameState state = st_waiting;
+unsigned long mils_start;
+unsigned long mils_reaction;
+
+// variables for keys
+bool b1, b2, oldb1 = false, oldb2 = false, k1 = false, k2 = false;
+
+// Method forward declarations
+void keyLoop();
+bool readK1();
+void scoreLoop();
+void reactionLoop();
+void startingLoop();
+void waitingLoop();
+void idleLoop();
 
 void setup()
 {
-    Serial.begin(115200);
-    Serial.println("BIPBox MPU6050 Test Sketch");
-
-    lcd.init();
-    lcd.backlight();
-    printLcdLine(0, "Initializing...");
-
-    // Initialize MPU6050
-    if (!mpu.begin())
-    {
-        // Default address 0x68
-        Serial.println("Failed to find MPU6050 chip");
-        printLcdLine(1, "MPU6050 Fail");
-        while (1)
-        {
-            delay(10);
-        }
-    }
-    Serial.println("MPU6050 Found!");
-    // Optional: Set accelerometer and gyro ranges if needed
-    // mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-    // mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-    // mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-
-    pinMode(KEY1_PIN, INPUT);
-    pinMode(POTENTIOMETER_PIN, INPUT);
-
-    printLcdLine(0, "Pot: ---- Btn: -");
-    printLcdLine(1, "Ax: ---- Ay:----");
-    delay(1000);
+  // put your setup code here, to run once:
+  Serial.begin(115200);
+  Serial.println("BIPBox Reaction Speed Test Game\nWhen the buzzer sounds and the LED lights up, press the left key.");
+  // keys
+  pinMode(KEY1, INPUT); // Pullup resistors on the PCB, no need for INPUT_PULLUP
+  pinMode(KEY2, INPUT); // and pullup resistors don't exist on pins 36 and 39 anyway
+  // buzzer
+  pinMode(33, OUTPUT);
+  tone(33, 800, 250); // beep
+  // Print a message to the LCD.s
+  lcd.init(); // initialize the lcd
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Reaction Game");
+  lcd.setCursor(0, 1);
+  lcd.print("Wait for sound");
 }
 
 void loop()
 {
-    int currentPotValue = analogRead(POTENTIOMETER_PIN);
-    if (abs(currentPotValue - potValue) > 20)
+  // put your main code here, to run repeatedly:
+  keyLoop();
+  switch (state)
+  {
+  case st_idle:
+    idleLoop();
+    break;
+  case st_waiting:
+    waitingLoop();
+    break;
+  case st_starting:
+    startingLoop();
+    break;
+  case st_reaction:
+    reactionLoop();
+    break;
+  case st_score:
+    scoreLoop();
+    break;
+  }
+}
+
+void keyLoop()
+{
+  // ---- KEYS ----
+  b1 = !digitalRead(KEY1);
+  b2 = !digitalRead(KEY2);
+  if (b1 && (b1 != oldb1))
+    k1 = true;
+  else
+    k1 = false;
+  if (b2 && (b2 != oldb2))
+    k2 = true;
+  else
+    k2 = false;
+  oldb1 = b1;
+  oldb2 = b2;
+}
+
+bool readK1()
+{
+  if (k1)
+  {
+    k1 = false;
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+void scoreLoop()
+{
+  if (readK1())
+  {
+    lcd.clear();
+    delay(250);
+    state = st_idle;
+  }
+}
+
+void reactionLoop()
+{
+  if (readK1())
+  {
+    unsigned long mils_now = millis();
+    unsigned long score = mils_now - mils_reaction;
+    lcd.clear();
+    lcd.print("Reaction time:");
+    lcd.setCursor(2, 1);
+    lcd.print(score);
+    delay(750);
+    lcd.setCursor(9, 1);
+    lcd.print("Press A");
+    state = st_score;
+  }
+}
+
+void startingLoop()
+{
+  if (mils_start - millis() > 0)
+  {
+    if (readK1())
     {
-        potValue = currentPotValue;
-        String potStr = "Pot:" + String(potValue);
-        String line0 = potStr;
-        for (int i = potStr.length(); i < 10; i++) line0 += " ";
-        line0 += "Btn:" + String(buttonPressed ? "P" : "-");
-        printLcdLine(0, line0);
+      // pressed the key too early - fail!
+      lcd.clear();
+      lcd.print("Too early!");
+      lcd.setCursor(0, 1);
+      lcd.print("--FAIL--");
+      tone(33, 300, 500);
+      delay(500);
+      state = st_score;
+      return;
     }
-
-    bool currentButtonState = (digitalRead(KEY1_PIN) == LOW);
-    if (currentButtonState != lastButtonState)
+    else
     {
-        if (currentButtonState)
-        {
-            buttonPressed = true;
-            Serial.println("Button PRESSED");
-        }
-        else
-        {
-            buttonPressed = false;
-            Serial.println("Button RELEASED");
-        }
-        String potStr = "Pot:" + String(potValue);
-        String line0 = potStr;
-        for (int i = potStr.length(); i < 10; i++) line0 += " ";
-        line0 += "Btn:" + String(buttonPressed ? "P" : "-");
-        printLcdLine(0, line0);
-        lastButtonState = currentButtonState;
+      return;
     }
+  }
+  tone(33, 800, 250);
+  mils_reaction = millis();
+  state = st_reaction;
+}
 
-    if (millis() - lastMpuReadTime > mpuReadInterval)
-    {
-        lastMpuReadTime = millis();
+void waitingLoop()
+{
+  if (readK1())
+  {
+    lcd.clear();
+    lcd.print("Press A on sound!");
+    state = st_starting;
+    mils_start = millis() + random(1000, 5000); // pick the time 1s to 5s from current
+    // INTRODUCE SMALL DELAY TO ACCOUNT FOR KEY BOUNCE!
+    delay(100);
+  }
+}
 
-        mpu.getEvent(&accelEvent, &gyroEvent, &tempEvent);
-
-        Serial.print("Accel X: ");
-        Serial.print(accelEvent.acceleration.x);
-        Serial.print(" Y: ");
-        Serial.print(accelEvent.acceleration.y);
-        Serial.print(" Z: ");
-        Serial.println(accelEvent.acceleration.z);
-        Serial.print("Gyro  X: ");
-        Serial.print(gyroEvent.gyro.x);
-        Serial.print(" Y: ");
-        Serial.print(gyroEvent.gyro.y);
-        Serial.print(" Z: ");
-        Serial.println(gyroEvent.gyro.z);
-
-        // Display accel X and Y on LCD
-        // Note: MPU6050 library returns floats, so format them if needed for display
-        String accelStr = "Ax:" + String(accelEvent.acceleration.x, 1) + // 1 decimal place
-            " Ay:" + String(accelEvent.acceleration.y, 1);
-        printLcdLine(1, accelStr);
-    }
-
-    delay(50);
+void idleLoop()
+{
+  lcd.clear();
+  lcd.print("Push A to start");
+  state = st_waiting;
 }
