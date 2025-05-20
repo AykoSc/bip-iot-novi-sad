@@ -1,46 +1,109 @@
 {
   "version": 1,
-  "author": "Reaction Game",
+  "author": "Djordje Herceg",
   "editor": "wokwi",
   "parts": [
     {
       "type": "board-esp32-devkit-c-v4",
       "id": "esp",
-      "top": 0,
-      "left": 0,
+      "top": 28.8,
+      "left": -187.16,
       "attrs": {}
     },
     {
       "type": "wokwi-lcd1602",
       "id": "lcd1",
-      "top": -120,
-      "left": -10,
+      "top": -89.6,
+      "left": -13.6,
       "attrs": {
-        "pins": "i2c",
-        "i2cAddress": "0x27"
+        "pins": "i2c"
       }
     },
     {
-      "type": "wokwi-buzzer",
-      "id": "buzzer1",
-      "top": 100,
-      "left": 100,
+      "type": "wokwi-gnd",
+      "id": "gnd1",
+      "top": -38.4,
+      "left": -87,
       "attrs": {}
     },
     {
       "type": "wokwi-pushbutton",
-      "id": "key1",
-      "top": 100,
-      "left": -50
+      "id": "btn1",
+      "top": 73.4,
+      "left": -374.4,
+      "attrs": {
+        "color": "green",
+        "bounce": "1",
+        "key": "1"
+      }
+    },
+    {
+      "type": "wokwi-gnd",
+      "id": "gnd2",
+      "top": 163.2,
+      "left": -413.4,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "bz1",
+      "top": -84,
+      "left": -324.6,
+      "attrs": {
+        "volume": "0.1"
+      }
+    },
+    {
+      "type": "wokwi-gnd",
+      "id": "gnd3",
+      "top": 19.2,
+      "left": -307.8,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": 114,
+      "left": 83.4,
+      "rotate": 90,
+      "attrs": {
+        "color": "red"
+      }
     },
     {
       "type": "wokwi-resistor",
-      "id": "r_key1",
-      "top": 70,
-      "left": -50,
+      "id": "r1",
+      "top": 128.75,
+      "left": 0,
       "attrs": {
-        "value": "10000"
+        "value": "33"
       }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 157.55,
+      "left": 0,
+      "attrs": {
+        "value": "330"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led2",
+      "top": 142.8,
+      "left": 83.4,
+      "rotate": 90,
+      "attrs": {
+        "color": "blue"
+      }
+    },
+    {
+      "type": "wokwi-gnd",
+      "id": "gnd4",
+      "top": 220.8,
+      "left": 66.6,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -58,63 +121,120 @@
     ],
     [
       "lcd1:GND",
-      "esp:GND.2",
+      "gnd1:GND",
       "black",
-      []
-    ],
-    [
-      "lcd1:VCC",
-      "esp:VIN",
-      "red",
-      []
+      [
+        "h0"
+      ]
     ],
     [
       "lcd1:SDA",
       "esp:21",
-      "blue",
-      []
+      "green",
+      [
+        "h-19.2",
+        "v134.6"
+      ]
     ],
     [
-      "lcd1:SCL",
       "esp:22",
-      "purple",
-      []
+      "lcd1:SCL",
+      "green",
+      [
+        "h48",
+        "v-105.6"
+      ]
     ],
     [
-      "buzzer1:1",
-      "esp:33",
-      "orange",
-      []
-    ],
-    [
-      "buzzer1:2",
-      "esp:GND.1",
-      "black",
-      []
-    ],
-    [
-      "key1:1",
-      "esp:VN",
-      "grey",
-      []
-    ],
-    [
-      "key1:2",
-      "esp:GND.1",
-      "black",
-      []
-    ],
-    [
-      "r_key1:1",
-      "esp:VN",
-      "grey",
-      []
-    ],
-    [
-      "r_key1:2",
+      "lcd1:VCC",
       "esp:3V3",
       "red",
-      []
+      [
+        "h-220.8",
+        "v105.7"
+      ]
+    ],
+    [
+      "btn1:2.l",
+      "gnd2:GND",
+      "black",
+      [
+        "v0.2",
+        "h-28.8"
+      ]
+    ],
+    [
+      "btn1:1.r",
+      "esp:VN",
+      "green",
+      [
+        "h19.4",
+        "v-28.8"
+      ]
+    ],
+    [
+      "bz1:2",
+      "esp:33",
+      "green",
+      [
+        "v0"
+      ]
+    ],
+    [
+      "bz1:1",
+      "gnd3:GND",
+      "green",
+      [
+        "v0"
+      ]
+    ],
+    [
+      "r1:1",
+      "esp:18",
+      "green",
+      [
+        "v0"
+      ]
+    ],
+    [
+      "esp:16",
+      "r2:1",
+      "green",
+      [
+        "h0"
+      ]
+    ],
+    [
+      "led2:A",
+      "gnd4:GND",
+      "green",
+      [
+        "h0"
+      ]
+    ],
+    [
+      "led1:A",
+      "gnd4:GND",
+      "green",
+      [
+        "h0"
+      ]
+    ],
+    [
+      "r2:2",
+      "led2:C",
+      "green",
+      [
+        "v0"
+      ]
+    ],
+    [
+      "r1:2",
+      "led1:C",
+      "green",
+      [
+        "v0"
+      ]
     ]
   ],
   "dependencies": {}
