@@ -20,6 +20,17 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // set the LCD address to 0x3F for physical 
 #define BUZZER 33
 #define SERVO 32
 
+// Custom character definitions
+byte empty_TL[] = {0x00, 0x0E, 0x10, 0x10, 0x10, 0x10, 0x00, 0x00};
+byte empty_TR[] = {0x00, 0x0E, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00};
+byte empty_BL[] = {0x00, 0x10, 0x10, 0x10, 0x10, 0x0E, 0x00, 0x00};
+byte empty_BR[] = {0x00, 0x01, 0x01, 0x01, 0x01, 0x0E, 0x00, 0x00};
+
+byte filled_TL[] = {0x00, 0x0E, 0x1E, 0x1E, 0x1E, 0x1E, 0x00, 0x00};
+byte filled_TR[] = {0x00, 0x0E, 0x0F, 0x0F, 0x0F, 0x0F, 0x00, 0x00};
+byte filled_BL[] = {0x00, 0x1E, 0x1E, 0x1E, 0x1E, 0x0E, 0x00, 0x00};
+byte filled_BR[] = {0x00, 0x0F, 0x0F, 0x0F, 0x0F, 0x0E, 0x00, 0x00};
+
 enum gameState
 {
   st_idle,
@@ -45,6 +56,28 @@ void startingLoop();
 void waitingLoop();
 void idleLoop();
 
+void printEmptyCircle(const int startCol)
+{
+  lcd.setCursor(startCol, 0);
+  lcd.write(0);
+  lcd.write(1);
+
+  lcd.setCursor(startCol, 1);
+  lcd.write(2);
+  lcd.write(3);
+}
+
+void printFilledCircle(const int startCol)
+{
+  lcd.setCursor(startCol, 0);
+  lcd.write(4);
+  lcd.write(5);
+
+  lcd.setCursor(startCol, 1);
+  lcd.write(6);
+  lcd.write(7);
+}
+
 void setup()
 {
   // put your setup code here, to run once:
@@ -62,6 +95,16 @@ void setup()
   // Print a message to the LCD
   lcd.init(); // initialize the lcd
   lcd.backlight();
+
+  // Create custom characters
+  lcd.createChar(0, empty_TL);
+  lcd.createChar(1, empty_TR);
+  lcd.createChar(2, empty_BL);
+  lcd.createChar(3, empty_BR);
+  lcd.createChar(4, filled_TL);
+  lcd.createChar(5, filled_TR);
+  lcd.createChar(6, filled_BL);
+  lcd.createChar(7, filled_BR);
 
   pinMode(LED1, OUTPUT);
   pinMode(LED3, OUTPUT);
@@ -149,7 +192,7 @@ void reactionLoop()
     digitalWrite(LED3, LOW); // Turn off reaction LED
 
     lcd.clear();
-    lcd.print("Reaction time:");
+    lcd.print("Your reaction:");
     lcd.setCursor(0, 1);
     lcd.print(score);
     lcd.print(" ms");
@@ -157,7 +200,8 @@ void reactionLoop()
     // Display score for a bit, then prompt
     delay(1500);
     lcd.setCursor(0, 1);
-    lcd.print("          PressA");
+    lcd.clear();
+    lcd.print("Press A for new Race!");
     state = st_score;
   }
 }
@@ -174,9 +218,9 @@ void startingLoop()
       // Pressed the key too early - fail!
       digitalWrite(LED1, LOW); // turn off the blinking LED
       lcd.clear();
-      lcd.print("Too early!");
+      lcd.print("False Start!");
       lcd.setCursor(0, 1);
-      lcd.print("--FAIL--");
+      lcd.print("-- PENALTY --");
       tone(BUZZER, 300, 500);
       delay(1000); // Increased delay to make "Too early" more visible
       state = st_score;
@@ -196,10 +240,16 @@ void startingLoop()
   // --- Time for reaction signal! ---
   digitalWrite(LED1, LOW);
   digitalWrite(LED3, HIGH);
-  tone(BUZZER, 800, 250);
+  tone(BUZZER, 800, 1000);
   mils_reaction_stimulus_shown = millis();
   lcd.clear();
-  lcd.print("!!! PRESS A !!!");
+  // lcd.print("!!! PRESS A !!!"); // User should react NOW
+  // printing 5 empty circles
+  printEmptyCircle(1);
+  printEmptyCircle(3 + 1);
+  printEmptyCircle(5 + 2);
+  printEmptyCircle(7 + 3);
+  printEmptyCircle(9 + 4);
 
   state = st_reaction;
 }
@@ -209,13 +259,44 @@ void waitingLoop()
   if (consumeK1PressEvent())
   {
     lcd.clear();
-    lcd.print("Get Ready...");
+    lcd.print("Drivers, Ready!");
     lcd.setCursor(0, 1);
-    lcd.print("Press on sound!");
+    lcd.print("Wait for the GO!");
 
     delay(1000);
 
-    mils_start_reaction_signal = millis() + random(2000, 5000);
+    lcd.clear();
+
+    // Do F1 traffic light simulation (F1 is doing this every about 1000ms).
+    // Also make a sound each time.
+    printEmptyCircle(1);
+    printEmptyCircle(3 + 1);
+    printEmptyCircle(5 + 2);
+    printEmptyCircle(7 + 3);
+    printEmptyCircle(9 + 4);
+    delay(1000);
+    tone(BUZZER, 300, 250);
+    printFilledCircle(1);
+    delay(1000);
+    tone(BUZZER, 300, 250);
+    printFilledCircle(3 + 1);
+
+    delay(1000);
+    tone(BUZZER, 300, 250);
+    printFilledCircle(5 + 2);
+
+    delay(1000);
+    tone(BUZZER, 300, 250);
+    printFilledCircle(7 + 3);
+
+    delay(1000);
+    tone(BUZZER, 300, 250);
+    printFilledCircle(9 + 4);
+
+    delay(10);
+
+    // Random delay in F1 start clock is usually between 0.5 and 5 seconds
+    mils_start_reaction_signal = millis() + random(500, 5000);
 
     digitalWrite(LED1, LOW);
     state = st_starting;
@@ -225,9 +306,9 @@ void waitingLoop()
 void idleLoop()
 {
   lcd.clear();
-  lcd.print("Reaction Game");
+  lcd.print("F1 Start Clock Game");
   lcd.setCursor(0, 1);
-  lcd.print("Push A to start");
+  lcd.print("Push A to start!");
 
   state = st_waiting;
 }
