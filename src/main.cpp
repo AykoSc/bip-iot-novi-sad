@@ -136,7 +136,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     lcd.print("Game Starting!");
     delay(800);
     state = st_waiting;
-  } else if (strcmp(topic, ) == 0) {
+  } else if (strcmp(topic, TOPIC_IN) == 0) {
     // Handle reaction time
     opponentReactionTime = strtoul((char*)payload, NULL, 10);
     Serial.println(opponentReactionTime);
@@ -420,7 +420,7 @@ void reactionLoop()
 
     if (gameMode == MULTIPLAYER) {
       char reactionTimeStr[10];
-      sprintf(reactionTimeStr, "%lu", score);
+      sprintf(reactionTimeStr, "%09lu", score);
       client.publish(TOPIC_OUT, reactionTimeStr); // We send our score to the opponent
       mils_reaction_stimulus_shown = mils_now;
       state = st_score;
