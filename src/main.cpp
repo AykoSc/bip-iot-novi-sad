@@ -171,10 +171,6 @@ void reconnect() {
 
 
 void connectingLoop() {
-  lcd.clear();
-  lcd.print("Connecting MQTT...");
-  lcd.setCursor(0,1);
-  lcd.print("Waiting for player");
 
   if (!client.connected()) {
     reconnect();
@@ -182,19 +178,16 @@ void connectingLoop() {
   client.loop();
 
   if (anotherPlayerJoined) {
+    client.publish("game/join", clientId.c_str());
     lcd.clear();
     lcd.print("Player Found!");
-    lcd.setCursor(0,1);
-    lcd.print("Ready to start?");
+    lcd.setCursor(0, 1);
+    lcd.print("Press A to Start!");
     state = st_multiplayer_waiting;
   }
 }
 
 void multiplayerWaitingLoop() {
-  lcd.clear();
-  lcd.print("Opponent Connected!");
-  lcd.setCursor(0, 1);
-  lcd.print("Press A to Start!");
   client.loop();
 
   if (consumeK1PressEvent()) {
@@ -271,6 +264,12 @@ void setup()
 
   lcd.clear();
   lcd.print("WiFi Connected!");
+  delay(500);
+
+  lcd.clear();
+  lcd.print("F1 Game Start");
+  lcd.setCursor(0, 1);
+  lcd.print("A - SP, B - MP");
 }
 
 void loop()
@@ -484,7 +483,6 @@ void startingLoop()
 }
 
 void waitingLoop() {
-  if (gameMode == SINGLEPLAYER) {
     if (consumeK1PressEvent()) {
       lcd.clear();
       lcd.print("Drivers, Ready!");
@@ -529,21 +527,19 @@ void waitingLoop() {
       digitalWrite(LED1, LOW);
       state = st_starting;
     }
-  }
 }
 
 void idleLoop()
 {
-  lcd.clear();
-  lcd.print("F1 Game Start");
-  lcd.setCursor(0, 1);
-  lcd.print("A - SP, B - MP");
-
   if (consumeK1PressEvent()) {
     gameMode = SINGLEPLAYER;
     state = st_waiting; // Classic mode
   } else if (consumeK2PressEvent()) {
     gameMode = MULTIPLAYER;
     state = st_connecting; //Time for networking
+      lcd.clear();
+    lcd.print("Connecting MQTT...");
+    lcd.setCursor(0,1);
+    lcd.print("Waiting for player");
   }
 }
