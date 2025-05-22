@@ -4,6 +4,10 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
+// Specify device
+#define TOPIC_OUT "game/result1" // on the other device switch 1 and 2
+#define TOPIC_IN "game/result2"
+
 // NETWORKING SETUP
 String client_id = "esp-"; // SET FOR EACH DEVICE INDIVIDUALLY
 #include <SPI.h>
@@ -24,6 +28,7 @@ bool anotherPlayerJoined = false;
 bool gameStartSignalReceived = false;
 unsigned long opponentReactionTime = 0;
 bool opponentReactionTimeRecieved = false;
+unsigned long score = 0;
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // set the LCD address to 0x3F for physical Box or 0x27 for virtual Wokwi
 
@@ -107,7 +112,7 @@ void printFilledCircle(const int startCol)
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
+  Serial.print("Message arrived ["); //not problematic
   Serial.print(topic);
   Serial.print("] ");
   for (int i = 0; i < length; i++) {
@@ -125,16 +130,16 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (state == st_connecting) {
       state = st_multiplayer_waiting;
     }
-  }
-  if (strcmp(topic, "game/start") == 0) {
+  } else if (strcmp(topic, "game/start") == 0) {
     // Start the game if one player is ready!
     lcd.clear();
     lcd.print("Game Starting!");
-    delay(500);
-    state = st_starting;
-  } else if (strcmp(topic, "game/result") == 0) {
+    delay(800);
+    state = st_waiting;
+  } else if (strcmp(topic, ) == 0) {
     // Handle reaction time
     opponentReactionTime = strtoul((char*)payload, NULL, 10);
+    Serial.println(opponentReactionTime);
     opponentReactionTimeRecieved = true;
     // Then compare reaction times and display result
   }
@@ -146,7 +151,7 @@ PubSubClient client(ethClient);
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
-    Serial.print("...Attempting MQTT connection...");
+    Serial.println("...Attempting MQTT connection...");
     // Attempt to connect
     if (client.connect(clientId.c_str())) {
       Serial.println("connected");
@@ -155,7 +160,7 @@ void reconnect() {
       // ... and resubscribe
       client.subscribe("game/join");
       client.subscribe("game/start");
-      client.subscribe("game/result");
+      client.subscribe(TOPIC_IN);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -193,16 +198,16 @@ void multiplayerWaitingLoop() {
   if (consumeK1PressEvent()) {
     // This device initiates the game
     client.publish("game/start", "START");
-    gameStartSignalReceived = true;
+    //gameStartSignalReceived = true;
     lcd.clear();
     lcd.print("Game Starting!");
     delay(900);
-    state = st_starting;
+    state = st_waiting;
   } if (gameStartSignalReceived) {
     lcd.clear();
     lcd.print("Game Starting!");
     delay(300);
-    state = st_starting;
+    state = st_waiting;
     gameStartSignalReceived = false; // Reset
   }
 }
@@ -254,7 +259,7 @@ void setup()
   Serial.print("Connected to the WiFi AP. My address is: ");
   Serial.println(WiFi.localIP());
   clientId = "esp32-client-" + String(WiFi.macAddress());
-  Serial.printf("The client %s connects to the MQTT broker\n", clientId.c_str());
+  Serial.println("The client connects to the MQTT broker\n");
 
   client.setServer(server, 1883);
   client.setCallback(callback);
@@ -353,11 +358,11 @@ bool consumeK2PressEvent()
 
 void scoreLoop() {
   if (gameMode == MULTIPLAYER) {
-    if (!opponentReactionTimeRecieved) {
-      lcd.clear();
-      lcd.print("Waiting for");
-      lcd.setCursor(0, 1);
-      lcd.print("opponent...");
+    lcd.clear();
+    lcd.print("Waiting for");
+    lcd.setCursor(0, 1);
+    lcd.print("opponent...");
+    while (!opponentReactionTimeRecieved) {
       client.loop(); // Keep MQTT connected
       return; // Restart till result is there
     }
@@ -369,23 +374,23 @@ void scoreLoop() {
         lcd.setCursor(0, 1);
         lcd.print("You false started!");
     } else {
-        const unsigned long myScore = millis() - mils_reaction_stimulus_shown;
-        if (myScore < opponentReactionTime) {
+        
+        if (score < opponentReactionTime) {
             lcd.print("YOU WON!");
             lcd.setCursor(0, 1);
-            lcd.print(myScore);
+            lcd.print(score);
             lcd.print(" vs ");
             lcd.print(opponentReactionTime);
-        } else if (myScore > opponentReactionTime) {
+        } else if (score > opponentReactionTime) {
             lcd.print("YOU LOST!");
             lcd.setCursor(0, 1);
-            lcd.print(myScore);
+            lcd.print(score);
             lcd.print(" vs ");
             lcd.print(opponentReactionTime);
         } else {
             lcd.print("IT'S A TIE!");
             lcd.setCursor(0, 1);
-            lcd.print(myScore);
+            lcd.print(score);
             lcd.print(" ms");
         }
     }
@@ -393,11 +398,10 @@ void scoreLoop() {
     mils_reaction_stimulus_shown = 0;
   }
 
-  if (consumeK1PressEvent()) {
-    digitalWrite(LED1, LOW);
-    digitalWrite(LED3, LOW);
-    state = st_idle; // Back to idle to choose game mode again
-  }
+  delay(2000);
+  digitalWrite(LED1, LOW);
+  digitalWrite(LED3, LOW);
+  state = st_idle;
 }
 
 void reactionLoop()
@@ -405,7 +409,7 @@ void reactionLoop()
   if (consumeK1PressEvent())
   {
     const unsigned long mils_now = millis();
-    const unsigned long score = mils_now - mils_reaction_stimulus_shown;
+    score = mils_now - mils_reaction_stimulus_shown;
     digitalWrite(LED3, LOW); // Turn off reaction LED
 
     lcd.clear();
@@ -417,7 +421,7 @@ void reactionLoop()
     if (gameMode == MULTIPLAYER) {
       char reactionTimeStr[10];
       sprintf(reactionTimeStr, "%lu", score);
-      client.publish("game/result", reactionTimeStr); // We send our score to the opponent
+      client.publish(TOPIC_OUT, reactionTimeStr); // We send our score to the opponent
       mils_reaction_stimulus_shown = mils_now;
       state = st_score;
     } else { // Single player
@@ -425,6 +429,7 @@ void reactionLoop()
       lcd.setCursor(0, 1);
       lcd.clear();
       lcd.print("Press A for new Race!");
+      client.loop();
       state = st_score;
     }
   }
@@ -449,7 +454,7 @@ void startingLoop()
       delay(1000); // Increased delay to make "Too early" more visible
 
       if (gameMode == MULTIPLAYER) {
-          client.publish("game/result", "99999"); // False start!
+          client.publish(TOPIC_OUT, "99999"); // False start!
       }
       state = st_score;
       return;
@@ -483,6 +488,7 @@ void startingLoop()
 }
 
 void waitingLoop() {
+  if (gameMode == SINGLEPLAYER) {
     if (consumeK1PressEvent()) {
       lcd.clear();
       lcd.print("Drivers, Ready!");
@@ -527,6 +533,51 @@ void waitingLoop() {
       digitalWrite(LED1, LOW);
       state = st_starting;
     }
+  } else {
+    lcd.clear();
+    lcd.print("Drivers, Ready!");
+    lcd.setCursor(0, 1);
+    lcd.print("Wait for the GO!");
+
+    delay(1000);
+
+    lcd.clear();
+
+    // Do F1 traffic light simulation (F1 is doing this every about 1000ms).
+    // Also make a sound each time.
+    printEmptyCircle(1);
+    printEmptyCircle(3 + 1);
+    printEmptyCircle(5 + 2);
+    printEmptyCircle(7 + 3);
+    printEmptyCircle(9 + 4);
+    delay(1000);
+    tone(BUZZER, 300, 250);
+    printFilledCircle(1);
+    delay(1000);
+    tone(BUZZER, 300, 250);
+    printFilledCircle(3 + 1);
+
+    delay(1000);
+    tone(BUZZER, 300, 250);
+    printFilledCircle(5 + 2);
+
+    delay(1000);
+    tone(BUZZER, 300, 250);
+    printFilledCircle(7 + 3);
+
+    delay(1000);
+    tone(BUZZER, 300, 250);
+    printFilledCircle(9 + 4);
+
+    delay(10);
+
+    // Random delay in F1 start clock is usually between 0.5 and 5 seconds
+    mils_start_reaction_signal = millis() + random(500, 5000);
+
+    digitalWrite(LED1, LOW);
+    state = st_starting;
+  }
+
 }
 
 void idleLoop()
