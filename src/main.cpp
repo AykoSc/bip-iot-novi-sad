@@ -144,6 +144,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     // Calculate delay until synchronized start time
     long timeToWait = synchronizedStartTime - millis();
     if (timeToWait < 0) timeToWait = 0; // If somehow late, start immediately
+    if (timeToWait > 1) timeToWait = 1;
 
     lcd.clear();
     lcd.print("Game Starts In:");
@@ -261,7 +262,7 @@ void setup()
   pinMode(KEY2, INPUT); // and pullup resistors don't exist on pins 36 and 39 anyway
 
   // buzzer
-  pinMode(BUZZER, OUTPUT);
+  ledcAttach(BUZZER, NOTE_A, 7);
   tone(BUZZER, 800, 250); // beep
 
   // Print a message to the LCD
@@ -413,13 +414,26 @@ void scoreLoop() {
       }
     } else if (opponentReactionTime == 99999) { // Opponent false started, current player didn't
         lcd.print("YOU WON!");
+        ledcWriteNote(BUZZER, NOTE_A, 6); delay(500);
+        ledcWriteNote(BUZZER, NOTE_A, 6); delay(250);
+        ledcWriteNote(BUZZER, NOTE_A, 6); delay(250);
+        ledcWriteNote(BUZZER, NOTE_B, 6); delay(500);
+        ledcWriteNote(BUZZER, NOTE_Cs, 7); delay(500);
+        ledcWriteNote(BUZZER, NOTE_D, 7); delay(1000);
         lcd.setCursor(0,1);
         lcd.print("Opponent false started!");
+        
     }
     else {
       // Both players finished, compare scores
       if (score < opponentReactionTime) {
         lcd.print("YOU WON!");
+        ledcWriteNote(BUZZER, NOTE_A, 6); delay(500);
+        ledcWriteNote(BUZZER, NOTE_A, 6); delay(250);
+        ledcWriteNote(BUZZER, NOTE_A, 6); delay(250);
+        ledcWriteNote(BUZZER, NOTE_B, 6); delay(500);
+        ledcWriteNote(BUZZER, NOTE_Cs, 7); delay(500);
+        ledcWriteNote(BUZZER, NOTE_D, 7); delay(1000);
         lcd.setCursor(0, 1);
         lcd.print(score);
         lcd.print(" vs ");
